@@ -13,9 +13,13 @@ const MainCalculateTax = () => {
     const [summary, setSummary] = useState(null);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
-    const [loading, setLoading] = useState(false);
+
     const [contract, setContract] = useState(null);
     const [wallet, setWallet] = useState("");
+
+    const [loadingFetch, setLoadingFetch] = useState(false);
+    const [loadingSync, setLoadingSync] = useState(false);
+    const [loadingCalc, setLoadingCalc] = useState(false);
 
     // ✅ Initialize MetaMask + Contract
     useEffect(() => {
@@ -51,7 +55,7 @@ const MainCalculateTax = () => {
             return;
         }
 
-        setLoading(true);
+        setLoadingFetch(true);
         try {
             const { data: corpData, error: corpError } = await supabase
                 .from("corp_users")
@@ -63,7 +67,6 @@ const MainCalculateTax = () => {
                 alert("No company found for this GSTIN.");
                 setCompany(null);
                 setInvoices([]);
-                setLoading(false);
                 return;
             }
 
@@ -82,7 +85,7 @@ const MainCalculateTax = () => {
             console.error("Error fetching data:", err);
             alert("Failed to fetch data.");
         } finally {
-            setLoading(false);
+            setLoadingFetch(false);
         }
     };
 
@@ -93,7 +96,7 @@ const MainCalculateTax = () => {
             return;
         }
 
-        setLoading(true);
+        setLoadingSync(true);
         try {
             for (const inv of invoices) {
                 const amt = parseInt(inv.amount);
@@ -113,7 +116,7 @@ const MainCalculateTax = () => {
             console.error("Blockchain sync failed:", err);
             alert("Error syncing to blockchain. See console for details.");
         } finally {
-            setLoading(false);
+            setLoadingSync(false);
         }
     };
 
@@ -124,8 +127,15 @@ const MainCalculateTax = () => {
             return;
         }
 
+        setLoadingCalc(true);
         try {
-            setLoading(true);
+            const exists = await contract.gstinExists(gstin);
+            if (!exists) {
+                alert("⚠️ GSTIN not found on-chain. Please sync invoices first.");
+                setLoadingCalc(false);
+                return;
+            }
+
             const res = await contract.getFinancialSummary(gstin);
 
             const summaryData = {
@@ -144,42 +154,34 @@ const MainCalculateTax = () => {
             setSummary(summaryData);
 
             // ✅ Save tax result to Supabase
-            try {
-                const taxInr = summaryData.totalAllTaxes || "0";
-                const taxEth = (parseFloat(taxInr) / 10000).toFixed(4); // Example ETH conversion
+            const taxInr = summaryData.totalAllTaxes || "0";
+            const taxEth = (parseFloat(taxInr) / 10000).toFixed(4); // sample conversion
 
-                const { data, error } = await supabase
-                    .from("tax_table")
-                    .upsert(
-                        {
-                            gstin: gstin,
-                            tax_eth: taxEth,
-                            tax_inr: taxInr,
-                            status: "not_paid",
-                            date_of_issue: new Date().toISOString(),
-                        },
-                        { onConflict: "gstin" }
-                    );
+            const { data, error } = await supabase
+                .from("tax_table")
+                .upsert(
+                    {
+                        gstin: gstin,
+                        tax_eth: taxEth,
+                        tax_inr: taxInr,
+                        status: "not_paid",
+                        date_of_issue: new Date().toISOString(),
+                    },
+                    { onConflict: "gstin" }
+                );
 
-                if (error) {
-                    console.error("Supabase update failed:", error);
-                    alert("Failed to update tax record in Supabase");
-                } else {
-                    console.log("✅ Tax record updated in Supabase:", data);
-                    alert("✅ Tax record saved to database successfully!");
-                }
-            } catch (err) {
-                console.error("Error saving tax record:", err);
+            if (error) {
+                console.error("Supabase update failed:", error);
+                alert("Failed to update tax record in Supabase");
+            } else {
+                console.log("✅ Tax record updated:", data);
+                alert("✅ Tax record saved to database successfully!");
             }
         } catch (err) {
             console.error("Tax calculation failed:", err);
-            if (err.reason === "GSTIN not found") {
-                alert("⚠️ GSTIN not found on-chain. Please sync invoices first.");
-            } else {
-                alert("Failed to calculate tax. See console for details.");
-            }
+            alert("Failed to calculate tax. See console for details.");
         } finally {
-            setLoading(false);
+            setLoadingCalc(false);
         }
     };
 
@@ -219,7 +221,7 @@ const MainCalculateTax = () => {
                     className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition"
                 >
                     <Search size={18} />
-                    {loading ? "Fetching..." : "Fetch Data"}
+                    {loadingFetch ? "Fetching..." : "Fetch Data"}
                 </button>
             </section>
 
@@ -281,20 +283,20 @@ const MainCalculateTax = () => {
                 <section className="flex flex-wrap gap-4 justify-end">
                     <button
                         onClick={syncToBlockchain}
-                        disabled={loading}
+                        disabled={loadingSync}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
                     >
                         <FileText size={20} />
-                        {loading ? "Syncing..." : "Sync to Blockchain"}
+                        {loadingSync ? "Syncing..." : "Sync to Blockchain"}
                     </button>
 
                     <button
                         onClick={calculateTax}
-                        disabled={loading}
+                        disabled={loadingCalc}
                         className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
                     >
                         <Calculator size={20} />
-                        {loading ? "Calculating..." : "Calculate Tax"}
+                        {loadingCalc ? "Calculating..." : "Calculate Tax"}
                     </button>
                 </section>
             )}
