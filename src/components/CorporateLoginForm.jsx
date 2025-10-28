@@ -38,11 +38,23 @@ const CorporateLoginForm = ({ onSignupClick, onLoginSuccess }) => {
 
             if (error) throw error;
 
+          
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError) throw sessionError;
+
+            const session = sessionData?.session;
+
+            if (!session) {
+                toast.error("Failed to load session data.");
+                return;
+            }
+
+            console.log("✅ Logged in session:", session);
+
             toast.success("Login successful!");
 
-            if (onLoginSuccess) onLoginSuccess(data.user);
-
-
+            // ✅ Now the session has `user.user_metadata.gstin`
+            if (onLoginSuccess) onLoginSuccess(session);
         } catch (err) {
             console.error("Login error:", err.message);
             toast.error(`Login failed: ${err.message}`);
@@ -50,6 +62,7 @@ const CorporateLoginForm = ({ onSignupClick, onLoginSuccess }) => {
             setLoading(false);
         }
     };
+
 
     return (
         <form className="space-y-5" onSubmit={handleLogin}>

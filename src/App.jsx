@@ -5,6 +5,8 @@ import Dashboard from "./pages/DashBoard";
 import GovernmentDashboard from "./pages/GovDashboard";
 import CalculateTax from "./pages/CalculateTax";
 import { supabase } from "./utils/supabase-client";
+import CorpInvoice from "./pages/CorpInvoice";
+import CorpTax from "./pages/CorpTax";
 
 function App() {
   const [session, setSession] = useState(null);
@@ -21,9 +23,7 @@ function App() {
 
       if (data.session) {
         const role = data.session.user.user_metadata?.role;
-        // Only auto-redirect to a dashboard if the user is currently
-        // on the root path (e.g. initial app load). This prevents
-        // forced navigation when the user manually enters a route.
+
         if (location.pathname === "/") {
           if (role) navigate("/dashboard");
           else navigate("/gov-dashboard");
@@ -38,8 +38,7 @@ function App() {
         setSession(newSession);
         if (newSession) {
           const role = newSession.user.user_metadata?.role;
-          // Only navigate on auth state change if we're at the root.
-          // This avoids hijacking in-progress navigation to other pages.
+
           if (location.pathname === "/") {
             if (role) navigate("/dashboard");
             else navigate("/gov-dashboard");
@@ -96,6 +95,17 @@ function App() {
             <Navigate to="/" />
           )
         }
+      />
+
+      <Route
+        path="/manage-invoices"
+        element={<CorpInvoice session={session} />}
+      />
+
+      <Route
+        path="/issued-tax"
+        element={<CorpTax session={session} />}
+
       />
 
       {/* Catch all: redirect unknown paths */}

@@ -48,33 +48,36 @@ const CorporateSignupForm = ({ onLoginClick }) => {
             }
 
             // 🪄 Step 2️⃣: Create user in Supabase Auth
-            const { data, error } = await supabase.auth.signUp({
+            const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
-                    data: { role: "corporate" },
+                    data: {
+                        role: "corporate",
+                        gstin,
+                        username,
+                        company_name,
+                    },
                 },
             });
 
-            if (error) throw error;
-            const user = data.user;
+            if (authError) throw authError;
 
-            // 🧾 Step 3️⃣: Add details to corp_users
+            // 🧾 Step 3️⃣: Insert into corp_users table
             const { error: insertError } = await supabase.from("corp_users").insert([
                 {
-                    id: user.id,
                     username,
                     gstin,
                     company_name,
                     email,
                     phone,
+                    is_active: true,
                 },
             ]);
 
             if (insertError) throw insertError;
 
-            toast.success("Signup successful! Please verify your email before logging in.");
-
+            toast.success("Corporate account created successfully!");
             setFormData({
                 username: "",
                 password: "",
@@ -84,21 +87,22 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                 phone: "",
             });
         } catch (err) {
-            console.error("Signup error:", err.message);
-            toast.error(`Signup failed: ${err.message}`);
+            console.error("Signup error:", err);
+            toast.error(err.message || "Something went wrong during registration.");
         } finally {
             setLoading(false);
         }
     };
 
-
     return (
-        <form className="space-y-5" onSubmit={handleSubmit}>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Corporate Signup</h2>
+        <form className="space-y-6" onSubmit={handleSubmit}>
+            <h2 className="text-2xl font-bold text-gray-800 text-center mb-4">
+                Corporate Signup
+            </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                         <User size={16} className="inline mr-2" /> Username *
                     </label>
                     <input
@@ -107,12 +111,12 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                         value={formData.username}
                         onChange={handleChange}
                         placeholder="Choose a username"
-                        className="w-full px-5 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                         <FileText size={16} className="inline mr-2" /> GSTIN *
                     </label>
                     <input
@@ -121,12 +125,12 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                         value={formData.gstin}
                         onChange={handleChange}
                         placeholder="29ABCDE1234F1Z5"
-                        className="w-full px-5 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 uppercase"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                         <Lock size={16} className="inline mr-2" /> Password *
                     </label>
                     <input
@@ -135,12 +139,12 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                         value={formData.password}
                         onChange={handleChange}
                         placeholder="Create a password"
-                        className="w-full px-5 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                         <Building2 size={16} className="inline mr-2" /> Company Name
                     </label>
                     <input
@@ -149,12 +153,12 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                         value={formData.company_name}
                         onChange={handleChange}
                         placeholder="Your company name"
-                        className="w-full px-5 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                         <Mail size={16} className="inline mr-2" /> Email *
                     </label>
                     <input
@@ -163,12 +167,12 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="company@example.com"
-                        className="w-full px-5 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
                         <Phone size={16} className="inline mr-2" /> Phone
                     </label>
                     <input
@@ -177,7 +181,7 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                         value={formData.phone}
                         onChange={handleChange}
                         placeholder="+91 9876543210"
-                        className="w-full px-5 py-3 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400"
                     />
                 </div>
             </div>
@@ -190,7 +194,7 @@ const CorporateSignupForm = ({ onLoginClick }) => {
                 {loading ? "Signing Up..." : "Sign Up"}
             </button>
 
-            <div className="text-center mt-4">
+            <div className="text-center mt-3">
                 <button
                     type="button"
                     onClick={onLoginClick}
