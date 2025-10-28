@@ -11,15 +11,13 @@ const MainCalculateTax = () => {
     const [company, setCompany] = useState(null);
     const [invoices, setInvoices] = useState([]);
     const [summary, setSummary] = useState(null);
-
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
-
     const [loading, setLoading] = useState(false);
     const [contract, setContract] = useState(null);
     const [wallet, setWallet] = useState("");
 
-    // ✅ Initialize MetaMask + Contract
+    // ✅ Initialize MetaMask + Contract (ethers v6 syntax)
     useEffect(() => {
         const initContract = async () => {
             if (!window.ethereum) {
@@ -28,14 +26,18 @@ const MainCalculateTax = () => {
             }
 
             try {
-                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                // ✅ Create provider and signer
+                const provider = new ethers.BrowserProvider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
-                const signer = provider.getSigner();
+                const signer = await provider.getSigner();
                 const address = await signer.getAddress();
+
+                // ✅ Create contract instance
                 const instance = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
                 setContract(instance);
                 setWallet(address);
+                console.log("✅ Connected wallet:", address);
             } catch (err) {
                 console.error("Wallet connect error:", err);
             }
@@ -44,7 +46,7 @@ const MainCalculateTax = () => {
         initContract();
     }, []);
 
-    // ✅ Fetch company details and invoices
+    // ✅ Fetch company + invoices from Supabase
     const fetchCompanyData = async () => {
         if (!gstin) {
             alert("Please enter a GSTIN");
@@ -70,7 +72,7 @@ const MainCalculateTax = () => {
 
             setCompany(corpData);
 
-            // 2️⃣ Fetch invoices within date range
+            // 2️⃣ Fetch invoices
             let query = supabase.from("invoices").select("*").eq("gstin", gstin);
             if (startDate && endDate) {
                 query = query.gte("date", startDate).lte("date", endDate);
@@ -99,6 +101,8 @@ const MainCalculateTax = () => {
         try {
             for (const inv of invoices) {
                 const amt = parseInt(inv.amount);
+                if (isNaN(amt)) continue;
+
                 if (inv.type.toLowerCase() === "income") {
                     const tx = await contract.addIncome(gstin, amt);
                     await tx.wait();
@@ -107,16 +111,17 @@ const MainCalculateTax = () => {
                     await tx.wait();
                 }
             }
+
             alert("✅ Invoices synced to blockchain successfully!");
         } catch (err) {
             console.error("Blockchain sync failed:", err);
-            alert("Error syncing to blockchain.");
+            alert("Error syncing to blockchain. See console for details.");
         } finally {
             setLoading(false);
         }
     };
 
-    // ✅ Get on-chain financial summary
+    // ✅ Fetch tax summary from blockchain
     const calculateTax = async () => {
         if (!contract || !gstin) {
             alert("Contract not ready or GSTIN missing.");
@@ -141,7 +146,11 @@ const MainCalculateTax = () => {
             });
         } catch (err) {
             console.error("Tax calculation failed:", err);
-            alert("Failed to calculate tax.");
+            if (err.reason === "GSTIN not found") {
+                alert("⚠️ GSTIN not found on-chain. Please sync invoices first.");
+            } else {
+                alert("Failed to calculate tax. See console for details.");
+            }
         } finally {
             setLoading(false);
         }
@@ -157,7 +166,7 @@ const MainCalculateTax = () => {
                 </p>
             </header>
 
-            {/* GSTIN + Date Filter */}
+            {/* GSTIN + Date Range */}
             <section className="bg-white p-6 rounded-2xl shadow flex flex-col md:flex-row items-center gap-4">
                 <input
                     type="text"
@@ -187,7 +196,7 @@ const MainCalculateTax = () => {
                 </button>
             </section>
 
-            {/* Company Details */}
+            {/* Company Info */}
             {company && (
                 <section className="bg-white p-6 rounded-2xl shadow">
                     <h2 className="text-xl font-semibold text-indigo-600 mb-4 flex items-center gap-2">
@@ -203,7 +212,7 @@ const MainCalculateTax = () => {
                 </section>
             )}
 
-            {/* Invoices */}
+            {/* Invoices Table */}
             {invoices.length > 0 && (
                 <section className="bg-white p-6 rounded-2xl shadow">
                     <h2 className="text-xl font-semibold text-indigo-600 mb-4 flex items-center gap-2">
@@ -240,7 +249,7 @@ const MainCalculateTax = () => {
                 </section>
             )}
 
-            {/* Blockchain Actions */}
+            {/* Blockchain Buttons */}
             {invoices.length > 0 && (
                 <section className="flex flex-wrap gap-4 justify-end">
                     <button
