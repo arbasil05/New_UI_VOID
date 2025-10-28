@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import { User, Lock } from "lucide-react";
 import { supabase } from "../utils/supabase-client";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const CorporateLoginForm = ({ onSignupClick, onLoginSuccess }) => {
     const [formData, setFormData] = useState({
         email: "",
         password: "",
     });
+
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
 
@@ -37,8 +40,8 @@ const CorporateLoginForm = ({ onSignupClick, onLoginSuccess }) => {
 
             toast.success("Login successful!");
 
-            // Optional: callback to parent (e.g. redirect dashboard)
             if (onLoginSuccess) onLoginSuccess(data.user);
+
 
         } catch (err) {
             console.error("Login error:", err.message);

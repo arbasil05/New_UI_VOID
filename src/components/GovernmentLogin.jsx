@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { User, Lock } from "lucide-react";
 import { supabase } from "../utils/supabase-client";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const GovernmentLoginForm = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({
@@ -9,6 +10,7 @@ const GovernmentLoginForm = ({ onLoginSuccess }) => {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData((prev) => ({

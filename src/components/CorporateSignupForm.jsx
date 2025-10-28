@@ -32,16 +32,34 @@ const CorporateSignupForm = ({ onLoginClick }) => {
         }
 
         try {
-            // Step 1: Sign up the user in Supabase Auth
+            // 🧠 Step 1️⃣: Check if GSTIN already exists
+            const { data: existingGSTIN, error: gstError } = await supabase
+                .from("corp_users")
+                .select("gstin")
+                .eq("gstin", gstin)
+                .maybeSingle();
+
+            if (gstError) throw gstError;
+
+            if (existingGSTIN) {
+                toast.error("This GSTIN is already registered.");
+                setLoading(false);
+                return;
+            }
+
+            // 🪄 Step 2️⃣: Create user in Supabase Auth
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    data: { role: "corporate" },
+                },
             });
 
             if (error) throw error;
             const user = data.user;
 
-            // Step 2: Insert corporate info linked to auth user
+            // 🧾 Step 3️⃣: Add details to corp_users
             const { error: insertError } = await supabase.from("corp_users").insert([
                 {
                     id: user.id,
@@ -56,6 +74,7 @@ const CorporateSignupForm = ({ onLoginClick }) => {
             if (insertError) throw insertError;
 
             toast.success("Signup successful! Please verify your email before logging in.");
+
             setFormData({
                 username: "",
                 password: "",
@@ -71,6 +90,7 @@ const CorporateSignupForm = ({ onLoginClick }) => {
             setLoading(false);
         }
     };
+
 
     return (
         <form className="space-y-5" onSubmit={handleSubmit}>
