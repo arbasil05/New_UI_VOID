@@ -1,90 +1,154 @@
-import { useState } from "react";
-import { BarChart2, IndianRupee, Calendar, FileCheck2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "../utils/supabase-client";
+import {
+    BarChart2,
+    IndianRupee,
+    Calendar,
+    FileCheck2,
+    Wallet,
+} from "lucide-react";
 import { Player } from "@lottiefiles/react-lottie-player";
 
 const IssuedTax = ({ session }) => {
     const [issuedTaxes, setIssuedTaxes] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const gstin = session?.user?.user_metadata?.gstin || null;
+
+    useEffect(() => {
+        const fetchIssuedTaxes = async () => {
+            if (!gstin) return;
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("tax_results")
+                    .select("*")
+                    .eq("gstin", gstin)
+                    .order("date_of_issue", { ascending: false });
+
+                if (error) throw error;
+                setIssuedTaxes(data || []);
+            } catch (err) {
+                console.error("Error fetching tax results:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchIssuedTaxes();
+    }, [gstin]);
+
     return (
-        <div className="bg-white shadow-md rounded-2xl p-8">
-            {/* Header */}
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                <div className="flex justify-center items-center gap-2">
-                    <BarChart2 className="text-indigo-600" size={22} />
-                    Taxes Issued by Government
+        <div className="min-h-screen bg-white py-8 px-6">
+            <div className="max-w-6xl mx-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <BarChart2 className="text-blue-600" size={28} />
+                    <h2 className="text-2xl font-semibold text-gray-800">
+                        Issued Tax Records
+                    </h2>
                 </div>
-            </h2>
 
-
-            {/* Table / Data */}
-            {loading ? (
-                <p className="text-gray-500">Loading issued taxes...</p>
-            ) : issuedTaxes.length === 0 ? (
-                <p className="text-gray-500 italic">
-                    <Player
-                        autoplay
-                        loop
-                        src={"/empty.json"}
-                        style={{ height: "220px", width: "220px" }}
-                    />
-                    <p className="text-center mt-3">No tax to pay</p>
-                </p>
-            ) : (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full border border-gray-200 rounded-xl overflow-hidden">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                            <tr className="text-gray-700 text-sm uppercase tracking-wide">
-                                <th className="py-3.5 px-6 text-left">Date</th>
-                                <th className="py-3.5 px-6 text-left">GSTIN</th>
-                                <th className="py-3.5 px-6 text-left">Total Income</th>
-                                <th className="py-3.5 px-6 text-left">Total Expense</th>
-                                <th className="py-3.5 px-6 text-left">Tax Payable</th>
-                                <th className="py-3.5 px-6 text-left">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white">
-                            {issuedTaxes.map((record, idx) => (
-                                <tr
-                                    key={record.id}
-                                    className={`${idx % 2 === 0 ? "bg-gray-50/50" : "bg-white"
-                                        } hover:bg-indigo-50 transition`}
-                                >
-                                    <td className="py-4 px-6 text-gray-700 flex items-center gap-2">
-                                        <Calendar size={14} className="text-gray-400" />
-                                        {new Date(record.created_at).toLocaleDateString("en-IN", {
-                                            day: "2-digit",
-                                            month: "short",
-                                            year: "numeric",
-                                        })}
-                                    </td>
-                                    <td className="py-4 px-6 text-gray-700">{record.gstin}</td>
-                                    <td className="py-4 px-6 text-gray-700 font-medium">
-                                        ₹{record.total_income || 0}
-                                    </td>
-                                    <td className="py-4 px-6 text-gray-700 font-medium">
-                                        ₹{record.total_expense || 0}
-                                    </td>
-                                    <td className="py-4 px-6 text-indigo-700 font-semibold">
-                                        ₹{record.tax_amount || 0}
-                                    </td>
-                                    <td className="py-4 px-6">
-                                        <span
-                                            className={`flex items-center gap-1 text-sm ${record.status === "paid"
-                                                ? "text-green-600"
-                                                : "text-amber-600"
-                                                }`}
-                                        >
-                                            <FileCheck2 size={15} />
-                                            {record.status || "Pending"}
-                                        </span>
-                                    </td>
+                {/* Loading Animation */}
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Player
+                            autoplay
+                            loop
+                            src="https://assets3.lottiefiles.com/packages/lf20_usmfx6bp.json"
+                            style={{ height: "150px", width: "150px" }}
+                        />
+                    </div>
+                ) : issuedTaxes.length === 0 ? (
+                    // No Data Message
+                    <div className="flex flex-col items-center justify-center h-64 bg-white shadow-md rounded-lg">
+                        <FileCheck2 className="text-gray-400 mb-3" size={40} />
+                        <p className="text-gray-500 text-lg">
+                            No tax records found
+                        </p>
+                    </div>
+                ) : (
+                    // Table Section
+                    <div className="overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-200">
+                        <table className="min-w-full border-collapse">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                        <Calendar className="inline mr-1" size={16} />
+                                        Date of Issue
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                        <Wallet className="inline mr-1" size={16} />
+                                        GSTIN
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                        <IndianRupee className="inline mr-1" size={16} />
+                                        Tax (INR)
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                        Tax (ETH)
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">
+                                        Action
+                                    </th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                            </thead>
+                            <tbody>
+                                {issuedTaxes.map((record) => (
+                                    <tr
+                                        key={record.id}
+                                        className=" hover:bg-gray-50 transition"
+                                    >
+                                        <td className="px-6 py-4 text-gray-800">
+                                            {new Date(
+                                                record.date_of_issue
+                                            ).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-700">
+                                            {record.gstin}
+                                        </td>
+                                        <td className="px-6 py-4 font-medium text-gray-900">
+                                            ₹{record.tax_inr}
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-800">
+                                            {record.tax_eth} ETH
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`px-3 py-1 text-sm rounded-full ${record.status === "paid"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-red-100 text-red-700"
+                                                    }`}
+                                            >
+                                                {record.status === "paid"
+                                                    ? "Paid"
+                                                    : "Not Paid"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {record.status === "not_paid" ? (
+                                                <button className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition">
+                                                    Pay Now
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    disabled
+                                                    className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-400 text-white cursor-not-allowed"
+                                                >
+                                                    Paid
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

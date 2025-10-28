@@ -57,13 +57,13 @@ const GetInvoice = ({ session }) => {
                 </div>
             ) : (
                 <div className="overflow-hidden rounded-xl border border-gray-200">
-                    <table className="w-full text-left text-gray-700">
+                    <table className="w-full table-fixed text-left text-gray-700">
                         <thead className="bg-gray-50 text-xs uppercase text-gray-600">
                             <tr>
-                                <th className="py-3 px-6">Date</th>
-                                <th className="py-3 px-6">Invoice No.</th>
-                                <th className="py-3 px-6">Type</th>
-                                <th className="py-3 px-6">Amount</th>
+                                <th className="py-3 px-6 w-1/4">Date</th>
+                                <th className="py-3 px-6 w-1/4">Invoice No.</th>
+                                <th className="py-3 px-6 w-1/4">Type</th>
+                                <th className="py-3 px-6 w-1/4">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -74,7 +74,7 @@ const GetInvoice = ({ session }) => {
                                         } hover:bg-indigo-50`}
                                 >
                                     {/* Date */}
-                                    <td className="py-3 px-6 flex items-center gap-2">
+                                    <td className="py-3 px-6 whitespace-nowrap flex items-center gap-2">
                                         <Calendar size={16} className="text-gray-400" />
                                         {new Date(inv.date).toLocaleDateString("en-IN", {
                                             day: "2-digit",
@@ -84,31 +84,39 @@ const GetInvoice = ({ session }) => {
                                     </td>
 
                                     {/* Invoice No */}
-                                    <td className="py-3 px-6 font-medium text-gray-800">
+                                    <td className="py-3 px-6 font-medium text-gray-800 whitespace-nowrap">
                                         {inv.invoice_number}
                                     </td>
 
                                     {/* Type */}
-                                    <td className="py-3 px-6 flex items-center gap-1 font-medium">
-                                        <Layers
-                                            size={16}
-                                            className={
-                                                inv.type === "income" ? "text-green-600" : "text-red-600"
-                                            }
-                                        />
-                                        <span
-                                            className={
-                                                inv.type === "income" ? "text-green-600" : "text-red-600"
-                                            }
-                                        >
-                                            {inv.type}
-                                        </span>
+                                    <td className="py-3 px-6 font-medium whitespace-nowrap">
+                                        <div className="flex items-center gap-1">
+                                            <Layers
+                                                size={16}
+                                                className={
+                                                    inv.type === "income"
+                                                        ? "text-green-600"
+                                                        : "text-red-600"
+                                                }
+                                            />
+                                            <span
+                                                className={
+                                                    inv.type === "income"
+                                                        ? "text-green-600"
+                                                        : "text-red-600"
+                                                }
+                                            >
+                                                {inv.type}
+                                            </span>
+                                        </div>
                                     </td>
 
                                     {/* Amount */}
-                                    <td className="py-3 px-6 text-indigo-700 font-semibold flex items-center gap-1">
-                                        <IndianRupee size={15} />
-                                        {inv.amount.toLocaleString("en-IN")}
+                                    <td className="py-3 px-6 text-indigo-700 font-semibold whitespace-nowrap">
+                                        <div className="flex items-center gap-1">
+                                            <IndianRupee size={15} />
+                                            {inv.amount.toLocaleString("en-IN")}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

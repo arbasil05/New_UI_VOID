@@ -1,9 +1,8 @@
 import SidebarCorp from '../components/SidebarCorp'
 import Navbar from '../components/Navbar'
-import InvoiceForm from '../components/InvoiceForm'
 import IssuedTax from '../components/IssuedTax'
 
-const CorpTax = ({session}) => {
+const CorpTax = ({ session }) => {
     return (
         <div className="flex h-screen bg-gray-50">
             <SidebarCorp session={session} />
@@ -12,7 +11,7 @@ const CorpTax = ({session}) => {
                 <Navbar session={session} />
                 <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
                     {/* <MainCalculateTax /> */}
-                    <IssuedTax />
+                    <IssuedTax session={session} />
                 </main>
             </div>
 
