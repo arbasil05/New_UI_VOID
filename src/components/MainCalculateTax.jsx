@@ -17,7 +17,7 @@ const MainCalculateTax = () => {
     const [contract, setContract] = useState(null);
     const [wallet, setWallet] = useState("");
 
-    // ✅ Initialize MetaMask + Contract (ethers v6 syntax)
+    // ✅ Initialize MetaMask + Contract
     useEffect(() => {
         const initContract = async () => {
             if (!window.ethereum) {
@@ -26,13 +26,11 @@ const MainCalculateTax = () => {
             }
 
             try {
-                // ✅ Create provider and signer
                 const provider = new ethers.BrowserProvider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
                 const signer = await provider.getSigner();
                 const address = await signer.getAddress();
 
-                // ✅ Create contract instance
                 const instance = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
                 setContract(instance);
@@ -55,7 +53,6 @@ const MainCalculateTax = () => {
 
         setLoading(true);
         try {
-            // 1️⃣ Fetch company info
             const { data: corpData, error: corpError } = await supabase
                 .from("corp_users")
                 .select("*")
@@ -72,7 +69,6 @@ const MainCalculateTax = () => {
 
             setCompany(corpData);
 
-            // 2️⃣ Fetch invoices
             let query = supabase.from("invoices").select("*").eq("gstin", gstin);
             if (startDate && endDate) {
                 query = query.gte("date", startDate).lte("date", endDate);
@@ -90,7 +86,7 @@ const MainCalculateTax = () => {
         }
     };
 
-    // ✅ Push invoices to blockchain
+    // ✅ Sync invoices to blockchain
     const syncToBlockchain = async () => {
         if (!contract || invoices.length === 0) {
             alert("No invoices to sync!");
@@ -121,7 +117,7 @@ const MainCalculateTax = () => {
         }
     };
 
-    // ✅ Fetch tax summary from blockchain
+    // ✅ Calculate tax and update Supabase
     const calculateTax = async () => {
         if (!contract || !gstin) {
             alert("Contract not ready or GSTIN missing.");
@@ -132,7 +128,7 @@ const MainCalculateTax = () => {
             setLoading(true);
             const res = await contract.getFinancialSummary(gstin);
 
-            setSummary({
+            const summaryData = {
                 totalIncome: res.totalIncome?.toString(),
                 totalExpense: res.totalExpense?.toString(),
                 netProfit: res.netProfit?.toString(),
@@ -143,7 +139,38 @@ const MainCalculateTax = () => {
                 tcs: res.tcs?.toString(),
                 totalAnnualTaxes: res.totalAnnualTaxes?.toString(),
                 totalAllTaxes: res.totalAllTaxes?.toString(),
-            });
+            };
+
+            setSummary(summaryData);
+
+            // ✅ Save tax result to Supabase
+            try {
+                const taxInr = summaryData.totalAllTaxes || "0";
+                const taxEth = (parseFloat(taxInr) / 10000).toFixed(4); // Example ETH conversion
+
+                const { data, error } = await supabase
+                    .from("tax_table")
+                    .upsert(
+                        {
+                            gstin: gstin,
+                            tax_eth: taxEth,
+                            tax_inr: taxInr,
+                            status: "not_paid",
+                            date_of_issue: new Date().toISOString(),
+                        },
+                        { onConflict: "gstin" }
+                    );
+
+                if (error) {
+                    console.error("Supabase update failed:", error);
+                    alert("Failed to update tax record in Supabase");
+                } else {
+                    console.log("✅ Tax record updated in Supabase:", data);
+                    alert("✅ Tax record saved to database successfully!");
+                }
+            } catch (err) {
+                console.error("Error saving tax record:", err);
+            }
         } catch (err) {
             console.error("Tax calculation failed:", err);
             if (err.reason === "GSTIN not found") {
